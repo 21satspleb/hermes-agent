@@ -162,6 +162,13 @@ HERMES_OVERLAYS: Dict[str, HermesOverlay] = {
         is_aggregator=True,
         base_url_env_var="HF_BASE_URL",
     ),
+    "ppq": HermesOverlay(
+        transport="openai_chat",
+        is_aggregator=True,
+        extra_env_vars=("PPQ_API_KEY",),
+        base_url_override="https://api.ppq.ai/v1",
+        base_url_env_var="PPQ_BASE_URL",
+    ),
     "novita": HermesOverlay(
         transport="openai_chat",
         is_aggregator=True,
@@ -324,6 +331,13 @@ ALIASES: Dict[str, str] = {
     "novita-ai": "novita",
     "novitaai": "novita",
 
+    # ppq / PayPerQ
+    "payperq": "ppq",
+    "ppq.ai": "ppq",
+    "pay-per-q": "ppq",
+    "pay-per-queue": "ppq",
+    "payperqueue": "ppq",
+
     # xiaomi
     "mimo": "xiaomi",
     "xiaomi-mimo": "xiaomi",
@@ -376,6 +390,7 @@ _LABEL_OVERRIDES: Dict[str, str] = {
     "local": "Local endpoint",
     "bedrock": "AWS Bedrock",
     "ollama-cloud": "Ollama Cloud",
+    "ppq": "PPQ (PayPerQ)",
     "xai-oauth": "xAI Grok OAuth (SuperGrok / Premium+)",
 }
 
