@@ -1,0 +1,5 @@
+name: ppq
+kind: model-provider
+version: 1.0.0
+description: PPQ (PayPerQ) multi-provider OpenAI-compatible gateway
+author: Hermes Agent

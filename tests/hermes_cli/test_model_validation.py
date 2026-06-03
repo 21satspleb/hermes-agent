@@ -155,6 +155,9 @@ class TestNormalizeProvider:
 
     def test_known_aliases(self):
         assert normalize_provider("glm") == "zai"
+        assert normalize_provider("payperq") == "ppq"
+        assert normalize_provider("ppq.ai") == "ppq"
+        assert normalize_provider("pay-per-queue") == "ppq"
         assert normalize_provider("kimi") == "kimi-coding"
         assert normalize_provider("moonshot") == "kimi-coding"
         assert normalize_provider("step") == "stepfun"
@@ -171,6 +174,7 @@ class TestProviderLabel:
         assert provider_label("stepfun") == "StepFun Step Plan"
         assert provider_label("copilot") == "GitHub Copilot"
         assert provider_label("copilot-acp") == "GitHub Copilot ACP"
+        assert provider_label("ppq") == "PPQ (PayPerQ)"
         assert provider_label("auto") == "Auto"
 
     def test_unknown_provider_preserves_original_name(self):
@@ -204,6 +208,29 @@ class TestProviderModelIds:
             return_value=["step-3.5-flash", "step-3-agent-lite"],
         ):
             assert provider_model_ids("stepfun") == ["step-3.5-flash", "step-3-agent-lite"]
+
+    def test_ppq_prefers_live_catalog_from_provider_profile(self):
+        with patch("hermes_cli.auth.resolve_api_key_provider_credentials", return_value={
+            "api_key": "***", "base_url": "https://api.ppq.ai/v1",
+        }), patch("urllib.request.urlopen") as mock_urlopen:
+            class _Resp:
+                def __enter__(self):
+                    return self
+                def __exit__(self, exc_type, exc, tb):
+                    return False
+                def read(self):
+                    return b'{"data":[{"id":"perplexity/sonar-pro"},{"id":"google/gemini-3.5-flash"}]}'
+            mock_urlopen.return_value = _Resp()
+            assert provider_model_ids("ppq") == ["perplexity/sonar-pro", "google/gemini-3.5-flash"]
+
+    def test_ppq_falls_back_to_curated_provider_profile(self):
+        with patch("hermes_cli.auth.resolve_api_key_provider_credentials", return_value={
+            "api_key": "", "base_url": "https://api.ppq.ai/v1",
+        }):
+            ids = provider_model_ids("ppq")
+            assert "perplexity/sonar-pro" in ids
+            assert "google/gemini-3.5-flash" in ids
+            assert "xiaomi/mimo-v2.5-pro" in ids
 
     def test_copilot_prefers_live_catalog(self):
         with patch("hermes_cli.auth.resolve_api_key_provider_credentials", return_value={"api_key": "gh-token"}), \
