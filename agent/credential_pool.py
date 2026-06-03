@@ -591,7 +591,7 @@ class CredentialPool:
         device_code-sourced entries; env/API-key-sourced entries have no
         auth.json shadow to sync from.
         """
-        if self.provider != "openai-codex" or entry.source != "device_code":
+        if self.provider != "openai-codex" or entry.source not in {"device_code", "manual:device_code"}:
             return entry
         try:
             with _auth_store_lock():
@@ -791,10 +791,15 @@ class CredentialPool:
         user actually chose.
         """
         # Only sync entries that were seeded *from* a singleton.  Manually
-        # added pool entries (source="manual:*") are independent credentials
-        # and must not write back to the singleton.
+        # added pool entries are normally independent credentials and must not
+        # write back to the singleton.  Exception: Codex ``manual:device_code``
+        # entries are produced by the same device-code OAuth flow as the
+        # singleton and hold the same single-use refresh-token lineage; after
+        # they refresh, auth.json must learn the rotated pair or the next
+        # singleton-seeded entry/process will replay a consumed refresh token.
         if entry.source not in {"device_code", "loopback_pkce"}:
-            return
+            if not (self.provider == "openai-codex" and entry.source == "manual:device_code"):
+                return
         try:
             with _auth_store_lock():
                 auth_store = _load_auth_store()
@@ -1106,7 +1111,7 @@ class CredentialPool:
                         )
                     self._entries = [
                         item for item in self._entries
-                        if item.source != "device_code"
+                        if item.source not in {"device_code", "manual:device_code"}
                     ]
                     if self._current_id == entry.id:
                         self._current_id = None
@@ -1261,7 +1266,7 @@ class CredentialPool:
             # frozen behind last_error_reset_at (can be hours in the
             # future for ChatGPT weekly windows).
             if (self.provider == "openai-codex"
-                    and entry.source == "device_code"
+                    and entry.source in {"device_code", "manual:device_code"}
                     and entry.last_status in {STATUS_EXHAUSTED, STATUS_DEAD}):
                 synced = self._sync_codex_entry_from_auth_store(entry)
                 if synced is not entry:
